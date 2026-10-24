@@ -49,3 +49,22 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Vehicle.objects.count(), 1)
         self.assertEqual(Vehicle.objects.get().make, 'Honda')
+
+    
+    def test_create_vehicle_rejects_negative_quantity(self):
+        payload = {
+            'make': 'Honda',
+            'model': 'Civic',
+            'category': 'Sedan',
+            'price': '28000.00',
+            'quantity': -1,
+        }
+
+        response = self.client.post(
+            '/api/vehicles/',
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Vehicle.objects.count(), 0)
