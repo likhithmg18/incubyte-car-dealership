@@ -1,8 +1,11 @@
 
+from django.db import transaction
+from django.db.models import F
 from django.shortcuts import get_object_or_404
+
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
 
 from .models import Vehicle
 from .serializers import VehicleSerializer
@@ -98,16 +101,25 @@ def vehicle_detail(request, pk):
 
 @api_view(['POST'])
 def purchase_vehicle(request, pk):
-    vehicle = get_object_or_404(Vehicle, pk=pk)
-
-    if vehicle.quantity <= 0:
-        return Response(
-            {'detail': 'Vehicle is out of stock.'},
-            status=status.HTTP_400_BAD_REQUEST,
+    with transaction.atomic():
+        updated = Vehicle.objects.filter(
+            pk=pk,
+            quantity__gt=0,
+        ).update(
+            quantity=F('quantity') - 1,
         )
 
-    vehicle.quantity -= 1
-    vehicle.save(update_fields=['quantity'])
+        if updated == 0:
+            # Return 404 if the vehicle does not exist.
+            vehicle = get_object_or_404(Vehicle, pk=pk)
+
+            # The vehicle exists but has no stock.
+            return Response(
+                {'detail': 'Vehicle is out of stock.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        vehicle = get_object_or_404(Vehicle, pk=pk)
 
     serializer = VehicleSerializer(vehicle)
     return Response(
@@ -150,7 +162,10 @@ def restock_vehicle(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if str(parsed_quantity) != str(quantity).strip() or parsed_quantity <= 0:
+    if (
+        str(parsed_quantity) != str(quantity).strip()
+        or parsed_quantity <= 0
+    ):
         return Response(
             {'detail': 'Quantity must be a positive integer.'},
             status=status.HTTP_400_BAD_REQUEST,
