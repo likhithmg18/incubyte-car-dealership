@@ -42,12 +42,16 @@ def vehicle_search(request):
 
     if make:
         vehicles = vehicles.filter(make__icontains=make)
+
     if model:
         vehicles = vehicles.filter(model__icontains=model)
+
     if category:
         vehicles = vehicles.filter(category__icontains=category)
+
     if min_price:
         vehicles = vehicles.filter(price__gte=min_price)
+
     if max_price:
         vehicles = vehicles.filter(price__lte=max_price)
 
@@ -55,7 +59,7 @@ def vehicle_search(request):
     return Response(serializer.data)
 
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'DELETE'])
 def vehicle_detail(request, pk):
     vehicle = get_object_or_404(Vehicle, pk=pk)
 
@@ -63,13 +67,100 @@ def vehicle_detail(request, pk):
         serializer = VehicleSerializer(vehicle)
         return Response(serializer.data)
 
-    serializer = VehicleSerializer(vehicle, data=request.data)
+    if request.method == 'PUT':
+        serializer = VehicleSerializer(
+            vehicle,
+            data=request.data,
+        )
 
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK,
+            )
 
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Only administrators can delete vehicles.
+    if not request.user.is_staff:
+        return Response(
+            {'detail': 'Only administrators can delete vehicles.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    vehicle.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+def purchase_vehicle(request, pk):
+    vehicle = get_object_or_404(Vehicle, pk=pk)
+
+    if vehicle.quantity <= 0:
+        return Response(
+            {'detail': 'Vehicle is out of stock.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    vehicle.quantity -= 1
+    vehicle.save(update_fields=['quantity'])
+
+    serializer = VehicleSerializer(vehicle)
     return Response(
-        serializer.errors,
-        status=status.HTTP_400_BAD_REQUEST,
+        serializer.data,
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+def restock_vehicle(request, pk):
+    vehicle = get_object_or_404(Vehicle, pk=pk)
+
+    # Only administrators can restock vehicles.
+    if not request.user.is_staff:
+        return Response(
+            {'detail': 'Only administrators can restock vehicles.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    quantity = request.data.get('quantity')
+
+    if quantity is None:
+        return Response(
+            {'detail': 'Quantity is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Reject booleans and non-integer values.
+    if isinstance(quantity, bool):
+        return Response(
+            {'detail': 'Quantity must be a positive integer.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        parsed_quantity = int(quantity)
+    except (TypeError, ValueError):
+        return Response(
+            {'detail': 'Quantity must be a positive integer.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if str(parsed_quantity) != str(quantity).strip() or parsed_quantity <= 0:
+        return Response(
+            {'detail': 'Quantity must be a positive integer.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    vehicle.quantity += parsed_quantity
+    vehicle.save(update_fields=['quantity'])
+
+    serializer = VehicleSerializer(vehicle)
+    return Response(
+        serializer.data,
+        status=status.HTTP_200_OK,
     )
