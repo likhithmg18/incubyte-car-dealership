@@ -1,4 +1,5 @@
 
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -41,18 +42,34 @@ def vehicle_search(request):
 
     if make:
         vehicles = vehicles.filter(make__icontains=make)
-
     if model:
         vehicles = vehicles.filter(model__icontains=model)
-
     if category:
         vehicles = vehicles.filter(category__icontains=category)
-
     if min_price:
         vehicles = vehicles.filter(price__gte=min_price)
-
     if max_price:
         vehicles = vehicles.filter(price__lte=max_price)
 
     serializer = VehicleSerializer(vehicles, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.data)
+
+
+@api_view(['GET', 'PUT'])
+def vehicle_detail(request, pk):
+    vehicle = get_object_or_404(Vehicle, pk=pk)
+
+    if request.method == 'GET':
+        serializer = VehicleSerializer(vehicle)
+        return Response(serializer.data)
+
+    serializer = VehicleSerializer(vehicle, data=request.data)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(
+        serializer.errors,
+        status=status.HTTP_400_BAD_REQUEST,
+    )
