@@ -125,3 +125,25 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(vehicle.model, 'Camry')
         self.assertEqual(vehicle.price, 30000)
         self.assertEqual(vehicle.quantity, 4)
+
+    
+    def test_delete_vehicle_requires_authentication(self):
+        vehicle = Vehicle.objects.create(
+            make='Toyota',
+            model='Corolla',
+            category='Sedan',
+            price=25000,
+            quantity=3,
+        )
+
+        response = self.client.delete(
+            f'/api/vehicles/{vehicle.id}/'
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertTrue(
+            Vehicle.objects.filter(id=vehicle.id).exists()
+        )
