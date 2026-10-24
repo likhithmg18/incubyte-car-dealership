@@ -30,3 +30,22 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(response.data[0]['model'], 'Corolla')
         self.assertEqual(response.data[0]['category'], 'Sedan')
         self.assertEqual(response.data[0]['quantity'], 3)
+
+    def test_create_vehicle(self):
+        payload = {
+            'make': 'Honda',
+            'model': 'Civic',
+            'category': 'Sedan',
+            'price': '28000.00',
+            'quantity': 5,
+        }
+
+        response = self.client.post(
+            '/api/vehicles/',
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Vehicle.objects.count(), 1)
+        self.assertEqual(Vehicle.objects.get().make, 'Honda')
