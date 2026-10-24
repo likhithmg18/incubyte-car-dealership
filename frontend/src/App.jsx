@@ -556,10 +556,31 @@ function App() {
                   key={vehicle.id}
                   className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                 >
-                  <div className="flex h-44 items-center justify-center bg-slate-200">
-                    <span role="img" aria-label="Car" className="text-6xl">
-                      🚘
-                    </span>
+                  <div className="h-44 overflow-hidden bg-slate-100">
+                    <img
+                      src={
+                        vehicle.model.toLowerCase().includes('civic')
+                          ? '/cars/honda-civic.jpg'
+                          : vehicle.model.toLowerCase().includes('innova')
+                            ? '/cars/toyota-innova.jpg'
+                            : vehicle.model.toLowerCase().includes('camry')
+                              ? '/cars/toyota-camry.jpg'
+                              : vehicle.model.toLowerCase().includes('creta')
+                                ? '/cars/hyundai-creta.jpg'
+                                : vehicle.model.toLowerCase().includes('swift')
+                                  ? '/cars/maruti-swift.jpg'
+                                  : vehicle.model.toLowerCase().includes('3 series')
+                                    ? '/cars/bmw-3-series.jpg'
+                                    : vehicle.model.toLowerCase().includes('nexon')
+                                      ? '/cars/tata-nexon.jpg'
+                                      : '/cars/toyota-camry.jpg'
+                      }
+                      alt={`${vehicle.make} ${vehicle.model}`}
+                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none'
+                      }}
+                    />
                   </div>
 
                   <div className="p-6">
