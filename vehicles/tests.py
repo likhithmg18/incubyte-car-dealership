@@ -17,7 +17,6 @@ class VehicleListAPITests(APITestCase):
 
     def test_get_vehicles_returns_successful_response(self):
         response = self.client.get('/api/vehicles/')
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_get_vehicles_returns_existing_vehicle(self):
@@ -248,7 +247,6 @@ class VehicleListAPITests(APITestCase):
             quantity=3,
         )
 
-        # self.client is authenticated as the regular user from setUp().
         response = self.client.post(
             f'/api/vehicles/{vehicle.id}/restock/',
             {'quantity': 5},
@@ -291,7 +289,6 @@ class VehicleListAPITests(APITestCase):
         vehicle.refresh_from_db()
         self.assertEqual(vehicle.quantity, 8)
 
-
     def test_purchase_does_not_make_quantity_negative(self):
         vehicle = Vehicle.objects.create(
             make='Toyota',
@@ -319,3 +316,73 @@ class VehicleListAPITests(APITestCase):
 
         vehicle.refresh_from_db()
         self.assertEqual(vehicle.quantity, 0)
+
+    # New authorization tests
+
+    def test_anonymous_user_cannot_list_vehicles(self):
+        anonymous_client = APIClient()
+
+        response = anonymous_client.get('/api/vehicles/')
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_anonymous_user_cannot_create_vehicle(self):
+        anonymous_client = APIClient()
+
+        data = {
+            'make': 'Honda',
+            'model': 'Civic',
+            'category': 'Sedan',
+            'price': '28000.00',
+            'quantity': 5,
+        }
+
+        response = anonymous_client.post(
+            '/api/vehicles/',
+            data,
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(Vehicle.objects.count(), 0)
+
+    def test_anonymous_user_cannot_purchase_vehicle(self):
+        vehicle = Vehicle.objects.create(
+            make='Toyota',
+            model='Camry',
+            category='Sedan',
+            price=25000,
+            quantity=3,
+        )
+
+        anonymous_client = APIClient()
+
+        response = anonymous_client.post(
+            f'/api/vehicles/{vehicle.id}/purchase/'
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+        vehicle.refresh_from_db()
+        self.assertEqual(vehicle.quantity, 3)
+
+    def test_anonymous_user_cannot_search_vehicles(self):
+        anonymous_client = APIClient()
+
+        response = anonymous_client.get(
+            '/api/vehicles/search/'
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
