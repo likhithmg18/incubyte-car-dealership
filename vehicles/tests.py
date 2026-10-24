@@ -93,3 +93,35 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['make'], 'Toyota')
         self.assertEqual(response.data[0]['model'], 'Corolla')
+
+
+    
+    def test_update_vehicle(self):
+        vehicle = Vehicle.objects.create(
+            make='Toyota',
+            model='Corolla',
+            category='Sedan',
+            price=25000,
+            quantity=3,
+        )
+
+        payload = {
+            'make': 'Toyota',
+            'model': 'Camry',
+            'category': 'Sedan',
+            'price': '30000.00',
+            'quantity': 4,
+        }
+
+        response = self.client.put(
+            f'/api/vehicles/{vehicle.id}/',
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        vehicle.refresh_from_db()
+        self.assertEqual(vehicle.model, 'Camry')
+        self.assertEqual(vehicle.price, 30000)
+        self.assertEqual(vehicle.quantity, 4)
