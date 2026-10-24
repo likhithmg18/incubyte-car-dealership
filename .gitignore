@@ -1,7 +1,28 @@
 
+# Python
 venv/
 __pycache__/
 *.py[cod]
+*.sqlite3
+
+# Environment variables and secrets
 .env
-.pytest_cache/
-.coverage
+.env.*
+!.env.example
+
+# Django
+staticfiles/
+media/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
