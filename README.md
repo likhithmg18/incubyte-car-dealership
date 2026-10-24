@@ -232,3 +232,19 @@ See [PROMPTS.md](PROMPTS.md) for the AI conversation records and links.
 ## Repository
 
 [GitHub repository](https://github.com/likhithmg18/incubyte-car-dealership)
+
+
+
+## Screenshots
+
+### Login Page
+![Login Page](screenshots/login.png)
+
+### Inventory Dashboard
+![Inventory Dashboard](screenshots/inventory-dashboard.png)
+
+### Search and Filters
+![Search and Filters](screenshots/search-filter.png)
+
+### Admin Features
+![Admin Features](screenshots/admin-features.png)
