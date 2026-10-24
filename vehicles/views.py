@@ -27,3 +27,32 @@ def vehicle_list(request):
         serializer.errors,
         status=status.HTTP_400_BAD_REQUEST,
     )
+
+
+@api_view(['GET'])
+def vehicle_search(request):
+    vehicles = Vehicle.objects.all()
+
+    make = request.query_params.get('make')
+    model = request.query_params.get('model')
+    category = request.query_params.get('category')
+    min_price = request.query_params.get('min_price')
+    max_price = request.query_params.get('max_price')
+
+    if make:
+        vehicles = vehicles.filter(make__icontains=make)
+
+    if model:
+        vehicles = vehicles.filter(model__icontains=model)
+
+    if category:
+        vehicles = vehicles.filter(category__icontains=category)
+
+    if min_price:
+        vehicles = vehicles.filter(price__gte=min_price)
+
+    if max_price:
+        vehicles = vehicles.filter(price__lte=max_price)
+
+    serializer = VehicleSerializer(vehicles, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
