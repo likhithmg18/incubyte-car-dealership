@@ -13,10 +13,18 @@ from .serializers import VehicleSerializer
 
 @api_view(['GET', 'POST'])
 def vehicle_list(request):
+    # Anyone authenticated can view vehicles.
     if request.method == 'GET':
         vehicles = Vehicle.objects.all()
         serializer = VehicleSerializer(vehicles, many=True)
         return Response(serializer.data)
+
+    # Only administrators can add vehicles.
+    if not request.user.is_staff:
+        return Response(
+            {'detail': 'Only administrators can add vehicles.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     serializer = VehicleSerializer(data=request.data)
 
@@ -66,9 +74,20 @@ def vehicle_search(request):
 def vehicle_detail(request, pk):
     vehicle = get_object_or_404(Vehicle, pk=pk)
 
+    # Authenticated users can view individual vehicles.
     if request.method == 'GET':
         serializer = VehicleSerializer(vehicle)
         return Response(serializer.data)
+
+    # Only administrators can edit or delete vehicles.
+    if not request.user.is_staff:
+        return Response(
+            {
+                'detail':
+                    'Only administrators can edit or delete vehicles.'
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     if request.method == 'PUT':
         serializer = VehicleSerializer(
@@ -88,19 +107,13 @@ def vehicle_detail(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Only administrators can delete vehicles.
-    if not request.user.is_staff:
-        return Response(
-            {'detail': 'Only administrators can delete vehicles.'},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
     vehicle.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['POST'])
 def purchase_vehicle(request, pk):
+    # Atomically decrement stock only when stock is available.
     with transaction.atomic():
         updated = Vehicle.objects.filter(
             pk=pk,
@@ -139,14 +152,7 @@ def restock_vehicle(request, pk):
 
     quantity = request.data.get('quantity')
 
-    if quantity is None:
-        return Response(
-            {'detail': 'Quantity is required.'},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    # Reject booleans and non-integer values.
-    if isinstance(quantity, bool):
+    if quantity is None or isinstance(quantity, bool):
         return Response(
             {'detail': 'Quantity must be a positive integer.'},
             status=status.HTTP_400_BAD_REQUEST,
@@ -169,6 +175,7 @@ def restock_vehicle(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Atomically increase stock.
     with transaction.atomic():
         updated = Vehicle.objects.filter(pk=pk).update(
             quantity=F('quantity') + parsed_quantity,

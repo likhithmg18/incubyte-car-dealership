@@ -15,6 +15,13 @@ class VehicleListAPITests(APITestCase):
         )
         self.client.force_authenticate(user=self.user)
 
+    def create_admin(self, username='testadmin'):
+        return User.objects.create_user(
+            username=username,
+            password='AdminPass123!',
+            is_staff=True,
+        )
+
     def test_get_vehicles_returns_successful_response(self):
         response = self.client.get('/api/vehicles/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -34,7 +41,10 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['make'], 'Toyota')
 
-    def test_create_vehicle(self):
+    def test_admin_can_create_vehicle(self):
+        admin_user = self.create_admin('createadmin')
+        self.client.force_authenticate(user=admin_user)
+
         data = {
             'make': 'Honda',
             'model': 'Civic',
@@ -49,10 +59,16 @@ class VehicleListAPITests(APITestCase):
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
         self.assertEqual(Vehicle.objects.count(), 1)
 
     def test_create_vehicle_rejects_negative_quantity(self):
+        admin_user = self.create_admin('negativeadmin')
+        self.client.force_authenticate(user=admin_user)
+
         data = {
             'make': 'Honda',
             'model': 'Civic',
@@ -70,6 +86,27 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(Vehicle.objects.count(), 0)
+
+    def test_regular_user_cannot_create_vehicle(self):
+        data = {
+            'make': 'Honda',
+            'model': 'Civic',
+            'category': 'Sedan',
+            'price': '28000.00',
+            'quantity': 5,
+        }
+
+        response = self.client.post(
+            '/api/vehicles/',
+            data,
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
         )
         self.assertEqual(Vehicle.objects.count(), 0)
 
@@ -98,7 +135,10 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(response.data[0]['make'], 'Toyota')
         self.assertEqual(response.data[0]['model'], 'Corolla')
 
-    def test_update_vehicle(self):
+    def test_admin_can_update_vehicle(self):
+        admin_user = self.create_admin('updateadmin')
+        self.client.force_authenticate(user=admin_user)
+
         vehicle = Vehicle.objects.create(
             make='Toyota',
             model='Corolla',
@@ -126,6 +166,38 @@ class VehicleListAPITests(APITestCase):
         vehicle.refresh_from_db()
         self.assertEqual(vehicle.price, 30000)
         self.assertEqual(vehicle.quantity, 4)
+
+    def test_regular_user_cannot_update_vehicle(self):
+        vehicle = Vehicle.objects.create(
+            make='Toyota',
+            model='Corolla',
+            category='Sedan',
+            price=25000,
+            quantity=3,
+        )
+
+        data = {
+            'make': 'Toyota',
+            'model': 'Corolla',
+            'category': 'Sedan',
+            'price': '30000.00',
+            'quantity': 4,
+        }
+
+        response = self.client.put(
+            f'/api/vehicles/{vehicle.id}/',
+            data,
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+        vehicle.refresh_from_db()
+        self.assertEqual(vehicle.price, 25000)
+        self.assertEqual(vehicle.quantity, 3)
 
     def test_delete_vehicle_requires_authentication(self):
         vehicle = Vehicle.objects.create(
@@ -171,11 +243,7 @@ class VehicleListAPITests(APITestCase):
         )
 
     def test_admin_can_delete_vehicle(self):
-        admin_user = User.objects.create_user(
-            username='adminuser',
-            password='AdminPass123!',
-            is_staff=True,
-        )
+        admin_user = self.create_admin('deleteadmin')
 
         vehicle = Vehicle.objects.create(
             make='Toyota',
@@ -262,11 +330,7 @@ class VehicleListAPITests(APITestCase):
         self.assertEqual(vehicle.quantity, 3)
 
     def test_admin_can_restock_vehicle(self):
-        admin_user = User.objects.create_user(
-            username='restockadmin',
-            password='AdminPass123!',
-            is_staff=True,
-        )
+        admin_user = self.create_admin('restockadmin')
 
         vehicle = Vehicle.objects.create(
             make='Toyota',
@@ -316,8 +380,6 @@ class VehicleListAPITests(APITestCase):
 
         vehicle.refresh_from_db()
         self.assertEqual(vehicle.quantity, 0)
-
-    # New authorization tests
 
     def test_anonymous_user_cannot_list_vehicles(self):
         anonymous_client = APIClient()
