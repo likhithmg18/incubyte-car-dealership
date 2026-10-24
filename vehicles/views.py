@@ -111,7 +111,7 @@ def purchase_vehicle(request, pk):
 
         if updated == 0:
             # Return 404 if the vehicle does not exist.
-            vehicle = get_object_or_404(Vehicle, pk=pk)
+            get_object_or_404(Vehicle, pk=pk)
 
             # The vehicle exists but has no stock.
             return Response(
@@ -130,8 +130,6 @@ def purchase_vehicle(request, pk):
 
 @api_view(['POST'])
 def restock_vehicle(request, pk):
-    vehicle = get_object_or_404(Vehicle, pk=pk)
-
     # Only administrators can restock vehicles.
     if not request.user.is_staff:
         return Response(
@@ -171,8 +169,15 @@ def restock_vehicle(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    vehicle.quantity += parsed_quantity
-    vehicle.save(update_fields=['quantity'])
+    with transaction.atomic():
+        updated = Vehicle.objects.filter(pk=pk).update(
+            quantity=F('quantity') + parsed_quantity,
+        )
+
+        if updated == 0:
+            get_object_or_404(Vehicle, pk=pk)
+
+        vehicle = get_object_or_404(Vehicle, pk=pk)
 
     serializer = VehicleSerializer(vehicle)
     return Response(
