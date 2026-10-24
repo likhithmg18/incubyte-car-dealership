@@ -290,3 +290,32 @@ class VehicleListAPITests(APITestCase):
 
         vehicle.refresh_from_db()
         self.assertEqual(vehicle.quantity, 8)
+
+
+    def test_purchase_does_not_make_quantity_negative(self):
+        vehicle = Vehicle.objects.create(
+            make='Toyota',
+            model='Corolla',
+            category='Sedan',
+            price=25000,
+            quantity=1,
+        )
+
+        first_response = self.client.post(
+            f'/api/vehicles/{vehicle.id}/purchase/'
+        )
+        second_response = self.client.post(
+            f'/api/vehicles/{vehicle.id}/purchase/'
+        )
+
+        self.assertEqual(
+            first_response.status_code,
+            status.HTTP_200_OK,
+        )
+        self.assertEqual(
+            second_response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+        vehicle.refresh_from_db()
+        self.assertEqual(vehicle.quantity, 0)
